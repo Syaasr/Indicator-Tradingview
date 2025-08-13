@@ -1,0 +1,50 @@
+//@version=4
+strategy(title="RSI Scalpin Strategy", shorttitle="RSI Scalpin Strat", overlay=false, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+//================ RSI ======================
+srcRSI = close
+lenRSI = input(14, minval=1, title="Length RSI")
+up = rma(max(change(srcRSI), 0), lenRSI)
+down = rma(-min(change(srcRSI), 0), lenRSI)
+rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
+
+//================ Stochastic ===============
+periodK = input(14, title="Stoch K", minval=1)
+periodD = input(6, title="Stoch D", minval=1)
+smoothK = input(6, title="Stoch Smooth", minval=1)
+k = sma(stoch(close, high, low, periodK), smoothK)
+d = sma(k, periodD)
+
+//================ DMI Stoch ================
+wwma(l,p) =>
+    wwma = 0.0
+    wwma := (nz(wwma[1])*(l-1)+p)/l 
+
+DMIlength = input(20)
+Stolength = input(5)
+
+hiDiff = high - high[1]
+loDiff = low[1] - low
+plusDM = (hiDiff>loDiff) and (hiDiff>0) ? hiDiff : 0
+minusDM = (loDiff>hiDiff) and (loDiff>0) ? loDiff : 0
+ATR = wwma(DMIlength, tr)
+PlusDI = 100 * wwma(DMIlength, plusDM) / ATR
+MinusDI = 100 * wwma(DMIlength, minusDM) / ATR
+osc = PlusDI - MinusDI
+
+hi = highest(osc, Stolength)
+lo = lowest(osc, Stolength)
+Stoch = sum((osc-lo), Stolength) / sum((hi-lo), Stolength) * 100
+
+//================ Sinyal ===================
+crossUp = Stoch[1] < 10 and Stoch > 10
+crossDown = Stoch[1] > 90 and Stoch < 90
+
+//================ Entry & Exit =============
+// BUY
+if (crossUp)
+    strategy.entry("Buy", strategy.long)
+
+// SELL
+if (crossDown)
+    strategy.entry("Sell", strategy.short)
